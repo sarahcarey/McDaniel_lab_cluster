@@ -23,14 +23,14 @@ Read the “Getting Started” page
 </br>
 On the [UFRC Help and Documentation](https://help.rc.ufl.edu/doc/UFRC_Help_and_Documentation) page there is also a link to “Training”. Within that link is a schedule for upcoming training sessions and archived videos/presentations of previous training sessions that may be useful to you
 
-### Task2: LINUX
+## Task2: LINUX
 If you are not familiar with using linux you may find [this UF IT training video](https://training.it.ufl.edu/training/items/introduction-to-linux-command-line.html) helpful 
 </br>
 If you feel you want even more linux training here’s a [command-line boot camp](http://rik.smith-unna.com/command_line_bootcamp/?id=9xnbkx6eaof)
 
-### Task 3: SLURM
+## Task 3: SLURM
 
-# SLURM is the workload manager we use to submit jobs on the cluster
+### SLURM is the workload manager we use to submit jobs on the cluster
 Do the [HiPerGator SLURM submission scripts training](https://training.it.ufl.edu/training/items/hipergator-slurm-submission-scripts.html)
 
 
