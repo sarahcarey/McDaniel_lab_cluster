@@ -65,7 +65,7 @@ If you want to run jobs on 1-100, but only submit 10 jobs at a time (useful when
 
 ## One input, one output
 
-Let’s say we want to build gene trees on 100 gene alignments using RAxML. For the array we'll use:
+Let’s say we want to build gene trees on 100 gene alignments using [RAxML](https://cme.h-its.org/exelixis/web/software/raxml/). For the array we'll use:
 
 ```{r analysis, results="markup"}
 #SBATCH --array 1-100%10
@@ -165,6 +165,102 @@ out=`echo $sample_name`.tre
 raxmlHPC-PTHREADS-SSE3 -f a -x $RANDOM -N 100 -T 5 -p $RANDOM -s $input_aln -n $out -m GTRGAMMA
 ````
 
+## Two inputs, multiple outputs  
 
+Now, let’s say we want to map paired-end genome resequence data using [HISAT2](https://ccb.jhu.edu/software/hisat2/index.shtml). But, because HISAT2 only outputs samples in the uncompressed sam format, we also want to run [Samtools](http://www.htslib.org/doc/samtools.html) to convert to a compressed bam (bams use a lot less storage than sams) and index the file to look at it in [IGV](https://software.broadinstitute.org/software/igv/). And we want to do this all the in the same script, so we don't have to submit multiple jobs. 
+
+But, for paired-end data we now have two input files. So, how can we make our input variable(s)? Why math, of course! If the fastq files are in the same directory, usually read 1 will precede read 2, so the input will look something like:
+
+Ala_M1_21.1.1_0_A_R1_Q30.fq.gz (read 1, sample A)<\br>
+Ala_M1_21.1.1_0_A_R2_Q30.fq.gz (read 2, sample A)<\br>
+Ala_M1_21.1.1_0_B_R1_Q30.fq.gz (read 1, sample B)<\br>
+Ala_M1_21.1.1_0_B_R2_Q30.fq.gz (read 2, sample B)<\br>
+
+So, first we make variables that will grab the array values in pairs (e.g. 1 and 2, 3 and 4):
+
+```{r analysis, results="markup"}
+two=$(($SLURM_ARRAY_TASK_ID*2))
+one=$(($two-1))
+````
+
+Then we use these numbers to get read 1 and 2:
+```{r analysis, results="markup"}
+left_read=`ls *fq.gz | head -n $one | tail -n 1`
+right_read=`ls *fq.gz | head -n $two | tail -n 1`
+````
+
+One thing to note, is even though you (in this example) have four input files, two of them go into each command (read 1 and read 2), so your array will only be for two runs:
+
+```{r analysis, results="markup"}
+#SBATCH --array 1-2
+````
+
+Then, like above, we can make a sample name:
+```{r analysis, results="markup"}
+sample_name=`echo $left_read | rev | cut -d '_' -f 3- | rev`
+````
+
+And make the output for samtools:
+```{r analysis, results="markup"}
+sam_out=`echo $sample_name`.sam
+````
+
+And now we can run HISAT2, where "-1" and "-2" take the inputs read 1 and read 2, respectively and "-S" is our sam output:
+
+```{r analysis, results="markup"}
+hisat2 -x Ceratodon_purpureus_mainGenome.fasta -1 $left_read -2 $right_read -p10 -S $sam_out
+````
+
+But, the great thing about bash variables is we can pass them to other commands. In this case, we can send our "$sam_out" to Samtools to convert it to bam. First we’ll make our output variable for our bam file (it's *strongly advised* to make a new file to write output to rather than overwritting an existing file):
+
+```{r analysis, results="markup"}
+bam_out=`echo $sample_name`.sorted.bam
+````
+
+Then we can run Samtools. Here we’ll sort the sam file and output it as bam. Then we’ll remove our rather large sam file using _rm_ and finally index the bam file:
+
+```{r analysis, results="markup"}
+samtools sort $sam_out -o $bam_out
+rm $sam_out
+samtools index $bam_out
+```
+
+All in all, our sbatch script might look something like this:
+
+```{r analysis, results="markup"}
+#!/bin/bash
+#SBATCH --job-name=HISAT
+#SBATCH --output=hisat_%j.out
+#SBATCH --error=hisat_%j.err
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=sarah.carey@ufl.edu
+#SBATCH --time=12:00:00
+#SBATCH --nodes=1-1
+#SBATCH --ntasks=10
+#SBATCH --mem-per-cpu=1G
+#SBATCH --qos=mcdaniel-b
+#SBATCH --array 1-2
+
+module load gcc/5.2.0
+module load hisat2/2.1.0
+module load samtools/1.8
+
+two=$(($SLURM_ARRAY_TASK_ID*2))
+one=$(($two-1))
+
+left_read=`ls *fq.gz | head -n $one | tail -n 1`
+right_read=`ls *fq.gz | head -n $two | tail -n 1`
+
+sample_name=`echo $left_read | rev | cut -d '_' -f 3- | rev`
+echo $sample_name
+sam_out=`echo $sample_name`.sam
+bam_out=`echo $sample_name`.sorted.bam
+
+hisat2 -x Ceratodon_purpureus_R40_plusU_UMasked.plusChloro -1 $left_read -2 $right_read -p10 -S $sam_out
+
+samtools sort $sam_out -o $bam_out
+rm $sam_out
+samtools index $bam_out
+````
 
 
