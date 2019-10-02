@@ -8,6 +8,7 @@ UF HiPerGator has a lot of resources online for running jobs, for example for [s
 To start, I have found these commands to be particularly helpful when running jobs on the cluster:
 
 ```{r analysis, results="markup"}# ls
+ls
 echo
 cut
 head
@@ -16,7 +17,7 @@ rev
 rm
 ````
 
-_Man_ is also a good one to know; Less so within the scripts but it’s “an interface to the on-line reference manuals”. On the cluster, you can type “man” then any of these commands to get the description and the flag options (e.g. “man ls”)
+_Man_ is also a good one to know; Less so within the scripts but it’s “an interface to the on-line reference manuals”. On the cluster, we can type “man” then any of these commands to get the description and the flag options (e.g. “man ls”)
 
 Here is what each of these commands is defined to do:
 ```{r analysis, results="markup"}
