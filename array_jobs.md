@@ -39,25 +39,25 @@ Array jobs are useful for running the same (or similar) commands on multiple fil
 #SBATCH --array
 ```
 
-If you want to run the same commands on the first two files (by default in [lexigraphical order] https://en.wikipedia.org/wiki/Lexicographical_order) in the same directory, you add this line to your sbatch script: 
+If we want to run the same commands on the first two files (by default in [lexigraphical order](https://en.wikipedia.org/wiki/Lexicographical_order)) in the same directory, we add this line to the sbatch script: 
 
 ```{r analysis, results="markup"}
 #SBATCH --array 1-2
 ````
 
-If you want to run jobs 1-100 you’d use:
+If we want to run jobs 1-100 you’d use:
 
 ```{r analysis, results="markup"}
 #SBATCH --array 1-100
 ````
 
-If you only want to run jobs 1, 5, 17:
+If we only want to run jobs 1, 5, 17:
 
 ```{r analysis, results="markup"}
 #SBATCH --array 1,5,17
 ````
 
-If you want to run jobs on 1-100, but only submit 10 jobs at a time (useful when sharing an account with others):
+If we want to run jobs on 1-100, but only submit 10 jobs at a time (useful when sharing an account with others):
 
 ```{r analysis, results="markup"}
 #SBATCH --array 1-100%10
@@ -111,7 +111,7 @@ If we wanted our “sample_name” to be “cluster1.pep” we would use:
 sample_name=`echo $input_aln | cut -d '.' -f 2`
 ````
 
-If instead we want to remove the “.fa” (sometimes file names don’t have the same number of delimiters) we could use the _rev_ command like so: 
+If instead we want to remove the “.fa” (sometimes file names don’t have the same number of delimiters) we could use _rev_ like so: 
 
 ```{r analysis, results="markup"}
 sample_name=`echo $input_aln | rev | cut -d '.' -f 2- | rev`
@@ -183,13 +183,13 @@ two=$(($SLURM_ARRAY_TASK_ID*2))
 one=$(($two-1))
 ````
 
-Then we use these numbers to get read 1 and 2:
+Then we use these numbers to get read 1 and 2, where our fastq files end in ".fq.gz":
 ```{r analysis, results="markup"}
 left_read=`ls *fq.gz | head -n $one | tail -n 1`
 right_read=`ls *fq.gz | head -n $two | tail -n 1`
 ````
 
-One thing to note, is even though you (in this example) have four input files, two of them go into each command (read 1 and read 2), so your array will only be for two runs:
+One thing to note, is even though we (in this example) have four input files, two of them go into each command (read 1 and read 2), so the array will only be for two runs:
 
 ```{r analysis, results="markup"}
 #SBATCH --array 1-2
