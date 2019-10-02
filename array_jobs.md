@@ -1,4 +1,4 @@
-### Useful linux/bash commands for running array jobs
+# Useful linux/bash commands for running array jobs
 
 Just as a note, Linux is an [operating system](https://en.wikipedia.org/wiki/Operating_system) and Bash is a [command-line interface](https://en.wikipedia.org/wiki/Command-line_interface)
 
@@ -45,7 +45,7 @@ If we want to run the same commands on the first two files (by default in [lexig
 #SBATCH --array 1-2
 ````
 
-If we want to run jobs 1-100 you’d use:
+If we want to run jobs 1-100 we’d use:
 
 ```{r analysis, results="markup"}
 #SBATCH --array 1-100
@@ -65,7 +65,7 @@ If we want to run jobs on 1-100, but only submit 10 jobs at a time (useful when 
 
 ## One input, one output
 
-Let’s say we want to build gene trees on 100 gene alignments using [RAxML](https://cme.h-its.org/exelixis/web/software/raxml/). For the array we'll use:
+Let’s say we want to build gene trees on 100 gene alignments using [RAxML](https://cme.h-its.org/exelixis/web/software/raxml/). For the array line we'll use:
 
 ```{r analysis, results="markup"}
 #SBATCH --array 1-100%10
@@ -75,7 +75,7 @@ So, we’re running 100 files and submitting them 10 at a time.
 Here’s our RAxML command:
 
 ```{r analysis, results="markup"}
-raxmlHPC-PTHREADS-SSE3 -f a -x $RANDOM -N 100 -T 5 -p $RANDOM -s INPUT_FILE_VARIABLE_HERE -n OUTPUT_FILE_VARIABLE_HERE -m GTRGAMMA
+raxmlHPC-PTHREADS-SSE3 -f a -x $RANDOM -N 100 -T 5 -p $RANDOM -m GTRGAMMA -s INPUT_FILE_VARIABLE_HERE -n OUTPUT_FILE_VARIABLE_HERE
 ````
 
 What we’ll need to do to is make variables for each of the input alignments and to output trees. For RAxML, the flags we need to make variables for are “-s” and “-n”, respectively. Now let's write something to call our particular input files. Let’s say our input alignment names are “cluster1.pep.filtered.fa, cluster2.pep.filtered.fa,… cluster100.pep.filtered.fa”. What we want to do is make a variable that will loop through each of our input alignments that we designate in our array. Here’s how we can make our input variable:
@@ -84,13 +84,15 @@ What we’ll need to do to is make variables for each of the input alignments an
 input_aln=`ls *.filtered.fa | head -n $SLURM_ARRAY_TASK_ID | tail -n 1`
 ````
 
-In short, this variable captures the first 100 files (because that's what defined in our array line) that end in ".filtered.fa". More specifically, what we are first doing is using _ls_ to list everything in our directory that ends in “.filtered.fa”. We then pipe this to _head_ (the “|” is the pipe command) and we give the variable [(SLURM generates this one)](https://slurm.schedmd.com/documentation.html) “$SLURM_ARRAY_TASK_ID” to the flag “-n” to get the first file our array (in this case file 1) and then pipe this to _tail_ to get our last file (file 100). So, now we have our input variable for RAxML:
+In short, this variable captures the first 100 files (because that's what defined in our array line) that end in ".filtered.fa". More specifically, what we are first doing is using _ls_ to list everything in our directory that ends in “.filtered.fa”. We then pipe this to _head_ (the “|” is the pipe command) and we give the variable “$SLURM_ARRAY_TASK_ID” ([SLURM generates this one)](https://slurm.schedmd.com/documentation.html); it's the index value of your array) to the flag “-n” to list 1 to N files (index value 1 will list the first file, index value 2 will list the first two files, etc.) which we then pipe to _tail_ to get our last file in the list (for index value 1 we will end up with file 1, for index value 2 with the second file in the list, etc.). So, now we have our input variable for RAxML where each one of the alignment files will be passed to our RAxML commands one at a time.:
 
 ```{r analysis, results="markup"}
 raxmlHPC-PTHREADS-SSE3 -f a -x $RANDOM -N 100 -T 5 -p $RANDOM -m GTRGAMMA -s $input_aln -n OUTPUT_FILE_VARIABLE_HERE
 ````
 
-Where each one of the alignment files will be passed to our RAxML commands one at a time. It’s important to remember when calling a defined variable to start with a “$” then give the variable name. Next we’ll want to make an output variable. We could very simply add the file extension “.tre” to our input file names, like so:
+It’s important to remember when calling a defined variable to start with a “$” then give the variable name. 
+
+Next we’ll want to make an output variable. We could very simply add the file extension “.tre” to our input file names, like so:
 
 ```{r analysis, results="markup"}
 out=`echo $input_aln`.tre
@@ -169,27 +171,28 @@ raxmlHPC-PTHREADS-SSE3 -f a -x $RANDOM -N 100 -T 5 -p $RANDOM -s $input_aln -n $
 
 Now, let’s say we want to map paired-end genome resequence data using [HISAT2](https://ccb.jhu.edu/software/hisat2/index.shtml). But, because HISAT2 only outputs samples in the uncompressed sam format, we also want to run [Samtools](http://www.htslib.org/doc/samtools.html) to convert to a compressed bam (bams use a lot less storage than sams) and index the file to look at it in [IGV](https://software.broadinstitute.org/software/igv/). And we want to do this all the in the same script, so we don't have to submit multiple jobs. 
 
-But, for paired-end data we now have two input files. So, how can we make our input variable(s)? Why math, of course! If the fastq files are in the same directory, usually read 1 will precede read 2, so the input will look something like:
+But, for paired-end data we now have two input files. So, how can we make our input variable(s)? Why math, of course! If the fastq files are in the same directory, usually read 1 will precede read 2, so the input will be in an order like:
 
-Ala_M1_21.1.1_0_A_R1_Q30.fq.gz (read 1, sample A)<\br>
-Ala_M1_21.1.1_0_A_R2_Q30.fq.gz (read 2, sample A)<\br>
-Ala_M1_21.1.1_0_B_R1_Q30.fq.gz (read 1, sample B)<\br>
-Ala_M1_21.1.1_0_B_R2_Q30.fq.gz (read 2, sample B)<\br>
+1 Ala_M1_21.1.1_R1.fq.gz<br/>
+2 Ala_M1_21.1.1_R2.fq.gz<br/>
+3 Uco_F1_15.12.12_R1.fq.gz<br/>
+4 Uco_F1_15.12.12_R2.fq.gz<br/>
 
-So, first we make variables that will grab the array values in pairs (e.g. 1 and 2, 3 and 4):
+So, first we make variables that will grab our paired index values (e.g. index values 1 and 2, and index values 3 and 4):
 
 ```{r analysis, results="markup"}
 two=$(($SLURM_ARRAY_TASK_ID*2))
 one=$(($two-1))
 ````
 
+So, for example, for the first array index, "$SLURM_ARRAY_TASK_ID" will equal 1. Therein, "$two" will equal 2, because 1 * 2 = 2. Then "$one" will equal 1, because 2 - 1 = 1. For array index 2, "$SLURM_ARRAY_TASK_ID" will equal 2. Therein, "$two" will equal 4, because 2 * 2 = 4 and "$one" will equal 3, because 4 - 1 = 3.
+
 Then we use these numbers to get read 1 and 2, where our fastq files end in ".fq.gz":
 ```{r analysis, results="markup"}
 left_read=`ls *fq.gz | head -n $one | tail -n 1`
 right_read=`ls *fq.gz | head -n $two | tail -n 1`
 ````
-
-One thing to note, is even though we (in this example) have four input files, two of them go into each command (read 1 and read 2), so the array will only be for two runs:
+So, "$one" will always grab left reads (R1) and "$two" will always grab right reads. One thing to note, is even though we (in this example) have four input files, two of them go into each command (read 1 and read 2), so the array will only be for two runs:
 
 ```{r analysis, results="markup"}
 #SBATCH --array 1-2
@@ -256,7 +259,7 @@ echo $sample_name
 sam_out=`echo $sample_name`.sam
 bam_out=`echo $sample_name`.sorted.bam
 
-hisat2 -x Ceratodon_purpureus_R40_plusU_UMasked.plusChloro -1 $left_read -2 $right_read -p10 -S $sam_out
+hisat2 -x Ceratodon_purpureus_mainGenome.fasta -1 $left_read -2 $right_read -p10 -S $sam_out
 
 samtools sort $sam_out -o $bam_out
 rm $sam_out
